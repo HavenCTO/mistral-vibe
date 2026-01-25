@@ -121,6 +121,50 @@ class SessionLoggingConfig(BaseSettings):
 class Backend(StrEnum):
     MISTRAL = auto()
     GENERIC = auto()
+    MULTIPLEXER = auto()
+
+
+class MultiplexerMode(StrEnum):
+    """Multiplexer operation modes."""
+
+    SINGLE = auto()  # Use active_model only (backward compat)
+    FAILOVER = auto()  # Try models in order, failover on errors
+    LOAD_BALANCE = auto()  # Weighted random selection across pool
+
+
+class ModelPoolEntry(BaseModel):
+    """Configuration for a model in the multiplexer pool."""
+
+    model: str = Field(description="Model alias referencing models[].alias")
+    weight: int = Field(
+        default=1, ge=1, description="Selection weight (higher = more likely)"
+    )
+    max_concurrent: int | None = Field(
+        default=None, ge=1, description="Max parallel requests"
+    )
+    is_fallback: bool = Field(default=False, description="Use only when primaries fail")
+
+
+class MultiplexerConfig(BaseModel):
+    """Configuration for the LLM multiplexer."""
+
+    enabled: bool = Field(default=False, description="Enable multiplexer mode")
+    mode: MultiplexerMode = Field(
+        default=MultiplexerMode.SINGLE, description="Multiplexer operation mode"
+    )
+    pool: list[ModelPoolEntry] = Field(
+        default_factory=list, description="Model pool configuration"
+    )
+    rate_limit_disable_duration_ms: int = Field(
+        default=60_000,
+        ge=1000,
+        description="How long to disable a model after rate limit (ms)",
+    )
+    persistent_error_disable_duration_ms: int = Field(
+        default=15_000,
+        ge=1000,
+        description="How long to disable a model after connection error (ms)",
+    )
 
 
 class ProviderConfig(BaseModel):
@@ -333,6 +377,11 @@ class VibeConfig(BaseSettings):
         ),
     )
 
+    multiplexer: MultiplexerConfig = Field(
+        default_factory=MultiplexerConfig,
+        description="LLM multiplexer configuration",
+    )
+
     model_config = SettingsConfigDict(
         env_prefix="VIBE_", case_sensitive=False, extra="ignore"
     )
@@ -368,6 +417,13 @@ class VibeConfig(BaseSettings):
         raise ValueError(
             f"Provider '{model.provider}' for model '{model.name}' not found in configuration."
         )
+
+    def get_model_by_alias(self, alias: str) -> ModelConfig:
+        """Get a ModelConfig by its alias."""
+        for model in self.models:
+            if model.alias == alias:
+                return model
+        raise ValueError(f"Model alias '{alias}' not found in configuration.")
 
     @classmethod
     def settings_customise_sources(
@@ -486,6 +542,41 @@ class VibeConfig(BaseSettings):
     @model_validator(mode="after")
     def _check_system_prompt(self) -> VibeConfig:
         _ = self.system_prompt
+        return self
+
+    @model_validator(mode="after")
+    def _validate_multiplexer_pool(self) -> VibeConfig:
+        """Validate multiplexer pool references existing model aliases."""
+        if not self.multiplexer.enabled or not self.multiplexer.pool:
+            return self
+
+        alias_to_model = {m.alias: m for m in self.models}
+        has_primary = False
+
+        for entry in self.multiplexer.pool:
+            if entry.model not in alias_to_model:
+                available = ", ".join(sorted(alias_to_model.keys()))
+                raise ValueError(
+                    f"Multiplexer pool entry references unknown model alias: '{entry.model}'. "
+                    f"Available aliases: {available}"
+                )
+
+            if not entry.is_fallback:
+                has_primary = True
+
+            # Validate API key exists for pool models
+            model = alias_to_model[entry.model]
+            provider = self.get_provider_for_model(model)
+            api_key_env = provider.api_key_env_var
+            if api_key_env and not os.getenv(api_key_env):
+                raise MissingAPIKeyError(api_key_env, provider.name)
+
+        if not has_primary:
+            raise ValueError(
+                "Multiplexer pool must have at least one non-fallback model. "
+                "All models in the pool are marked as fallbacks."
+            )
+
         return self
 
     @classmethod

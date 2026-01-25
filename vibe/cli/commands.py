@@ -62,6 +62,11 @@ class CommandRegistry:
                 description="Display agent statistics",
                 handler="_show_status",
             ),
+            "mux": Command(
+                aliases=frozenset(["/mux"]),
+                description="Show multiplexer status and controls",
+                handler="_handle_mux",
+            ),
         }
 
         for command in excluded_commands:

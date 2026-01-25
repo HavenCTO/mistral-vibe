@@ -332,3 +332,36 @@ type SyncApprovalCallback = Callable[
 ]
 
 type ApprovalCallback = AsyncApprovalCallback | SyncApprovalCallback
+
+
+class PerModelStats(BaseModel):
+    """Statistics for a single model in the multiplexer pool."""
+
+    success_count: int = 0
+    rate_limit_count: int = 0
+    fail_count: int = 0
+    is_disabled: bool = False
+    disabled_until_timestamp: float | None = None
+
+    @computed_field
+    @property
+    def total_requests(self) -> int:
+        return self.success_count + self.rate_limit_count + self.fail_count
+
+    @computed_field
+    @property
+    def success_rate(self) -> float:
+        total = self.total_requests
+        return self.success_count / total if total > 0 else 0.0
+
+
+class MultiplexerStats(BaseModel):
+    """Aggregated statistics for multiplexer operation."""
+
+    enabled: bool = False
+    mode: str = "single"
+    models_in_pool: int = 0
+    models_available: int = 0
+    models_disabled: int = 0
+    last_used_model: str | None = None
+    per_model: dict[str, PerModelStats] = Field(default_factory=dict)

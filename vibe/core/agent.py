@@ -154,10 +154,34 @@ class Agent:
         return self._mode.auto_approve
 
     def _select_backend(self) -> BackendLike:
+        # Check if multiplexer is enabled and has pool entries
+        if self.config.multiplexer.enabled and self.config.multiplexer.pool:
+            return self._create_multiplexer_backend()
+
+        # Fall back to existing single-model behavior
         active_model = self.config.get_active_model()
         provider = self.config.get_provider_for_model(active_model)
         timeout = self.config.api_timeout
         return BACKEND_FACTORY[provider.backend](provider=provider, timeout=timeout)
+
+    def _create_multiplexer_backend(self) -> BackendLike:
+        """Create a MultiplexerBackend from configuration."""
+        from vibe.core.config import ModelConfig, ModelPoolEntry, ProviderConfig
+        from vibe.core.llm.backend.multiplexer import MultiplexerBackend
+
+        # Build model configs list from pool entries
+        model_configs: list[tuple[ModelConfig, ProviderConfig, ModelPoolEntry]] = []
+
+        for entry in self.config.multiplexer.pool:
+            model = self.config.get_model_by_alias(entry.model)
+            provider = self.config.get_provider_for_model(model)
+            model_configs.append((model, provider, entry))
+
+        return MultiplexerBackend(
+            model_configs=model_configs,
+            multiplexer_config=self.config.multiplexer,
+            timeout=self.config.api_timeout,
+        )
 
     def add_message(self, message: LLMMessage) -> None:
         self.messages.append(message)

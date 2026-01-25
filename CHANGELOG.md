@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **LLM Multiplexer**: New backend for load balancing and automatic failover across multiple LLM models
+  - `[multiplexer]` configuration section with `enabled`, `mode`, and pool settings
+  - Three operation modes: `single` (backward compatible), `failover`, and `load_balance`
+  - Automatic rate limit handling with configurable disable durations
+  - Per-model concurrency limits and weighted selection
+  - `/mux` slash command to view multiplexer status and statistics
+  - Support for primary and fallback model configurations
+- Multiplexer documentation at `docs/multiplexer.md`
+- Configuration examples at `docs/multiplexer-examples.md`
+- Migration guide at `MIGRATION.md`
+
+### Changed
+
+- Extended `VibeConfig` with `MultiplexerConfig` validation
+- Added `MultiplexerStats` and `PerModelStats` types for statistics tracking
+- Backend factory now supports `multiplexer` backend type
+
 ## [1.3.5] - 2026-01-12
 
 ### Fixed

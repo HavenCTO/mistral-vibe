@@ -716,6 +716,92 @@ class VibeApp(App):  # noqa: PLR0904
 """
         await self._mount_and_scroll(UserCommandMessage(status_text))
 
+    async def _handle_mux(self) -> None:
+        """Handle /mux command - show multiplexer status."""
+        if not self.config.multiplexer.enabled:
+            status_text = """## Multiplexer Status
+
+Multiplexer is **disabled**.
+
+To enable, configure `[multiplexer]` in your config.toml:
+```toml
+[multiplexer]
+enabled = true
+mode = "failover"
+
+[[multiplexer.pool]]
+model = "devstral-2"
+weight = 1
+```
+"""
+            await self._mount_and_scroll(UserCommandMessage(status_text))
+            return
+
+        if self.agent is None:
+            await self._mount_and_scroll(
+                ErrorMessage(
+                    "Agent not initialized yet. Send a message first.",
+                    collapsed=self._tools_collapsed,
+                )
+            )
+            return
+
+        backend = self.agent.backend
+        if not hasattr(backend, "get_stats"):
+            await self._mount_and_scroll(
+                ErrorMessage(
+                    "Current backend does not support multiplexer stats.",
+                    collapsed=self._tools_collapsed,
+                )
+            )
+            return
+
+        stats = backend.get_stats()
+        status_text = self._format_mux_stats(stats)
+        await self._mount_and_scroll(UserCommandMessage(status_text))
+
+    def _format_mux_stats(self, stats: Any) -> str:
+        """Format multiplexer stats for display."""
+        from datetime import datetime
+
+        lines = [
+            "## Multiplexer Status",
+            "",
+            f"**Mode:** {stats.mode}",
+            f"**Pool:** {stats.models_available}/{stats.models_in_pool} models available",
+            "",
+        ]
+
+        if stats.per_model:
+            lines.extend(["### Per-Model Statistics", ""])
+
+            for name, model_stats in stats.per_model.items():
+                if model_stats.is_disabled:
+                    if model_stats.disabled_until_timestamp:
+                        dt = datetime.fromtimestamp(model_stats.disabled_until_timestamp)
+                        status = f"🔴 disabled until {dt.strftime('%H:%M:%S')}"
+                    else:
+                        status = "🔴 disabled"
+                else:
+                    status = "🟢 active"
+
+                rate = (
+                    f"{model_stats.success_rate:.0%}"
+                    if model_stats.total_requests > 0
+                    else "N/A"
+                )
+
+                lines.append(f"**{name}**: {status}")
+                lines.append(
+                    f"  - Success: {model_stats.success_count} | "
+                    f"Rate limited: {model_stats.rate_limit_count} | "
+                    f"Failed: {model_stats.fail_count} | "
+                    f"Success rate: {rate}"
+                )
+                lines.append("")
+
+        return "\n".join(lines)
+
     async def _show_config(self) -> None:
         """Switch to the configuration app in the bottom panel."""
         if self._current_bottom_app == BottomApp.Config:
