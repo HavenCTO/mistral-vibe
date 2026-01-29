@@ -600,7 +600,9 @@ class VibeApp(App):  # noqa: PLR0904
 
         loading_area = self.query_one("#loading-area-content")
 
-        loading = LoadingWidget()
+        # Get loading status from agent if using multiplexer
+        loading_status = self.agent.get_loading_status() if self.agent else None
+        loading = LoadingWidget(status=loading_status)
         self._loading_widget = loading
         await loading_area.mount(loading)
         self._show_todo_area()

@@ -252,7 +252,7 @@ class MultiplexerBackend:
                         self._multiplexer.add_fallback_model(
                             model=client,
                             weight=entry.weight,
-                            model_name=model_config.name,
+                            model_name=model_config.model_id,
                             base_url=prov_config.api_base,
                             max_concurrent=entry.max_concurrent,
                         )
@@ -260,7 +260,7 @@ class MultiplexerBackend:
                         self._multiplexer.add_model(
                             model=client,
                             weight=entry.weight,
-                            model_name=model_config.name,
+                            model_name=model_config.model_id,
                             base_url=prov_config.api_base,
                             max_concurrent=entry.max_concurrent,
                         )
@@ -283,7 +283,7 @@ class MultiplexerBackend:
                     self._multiplexer.add_model(
                         model=client,
                         weight=1,
-                        model_name=model_config.name,
+                        model_name=model_config.model_id,
                         base_url=prov_config.api_base,
                     )
 
@@ -346,6 +346,44 @@ class MultiplexerBackend:
         if self._simple_model_configs:
             return self._simple_model_configs[0][0]
         raise RuntimeError("No model configs available in MultiplexerBackend")
+
+    def get_loading_status(self) -> str | None:
+        """Get a status message describing the current model pool.
+
+        Returns:
+            A formatted string describing the primary model and provider,
+            or None if using a single model configuration.
+        """
+        configs = self._pool_model_configs or self._simple_model_configs
+        if not configs:
+            return None
+
+        # Get primary (non-fallback) models
+        primary_configs: list[tuple[ModelConfig, ProviderConfig]] = []
+        if self._pool_model_configs:
+            primary_configs = [
+                (model, provider)
+                for model, provider, entry in self._pool_model_configs
+                if not entry.is_fallback
+            ]
+        elif self._simple_model_configs:
+            # Phase 1: All simple configs are considered primary
+            primary_configs = [
+                (model, provider) for model, provider in self._simple_model_configs
+            ]
+
+        if not primary_configs:
+            return None
+
+        # Show info for the first primary model (highest priority)
+        model, provider = primary_configs[0]
+
+        # If there's only one primary model, show specific info
+        if len(primary_configs) == 1:
+            return f"Generating using model {model.name} from provider {provider.name}..."
+
+        # Multiple primary models - show the first one with a hint
+        return f"Generating using model {model.name} from provider {provider.name}..."
 
     async def complete(
         self,
@@ -661,6 +699,7 @@ class MultiplexerBackend:
         status: int | None = None
         reason: str | None = str(error)
         endpoint = self._provider.api_base
+        raw_response: str | None = None
 
         match error:
             case RateLimitError():
@@ -681,6 +720,11 @@ class MultiplexerBackend:
             case APIError() as api_err:
                 status = api_err.status_code
                 reason = api_err.message
+                # Try to get raw response body from APIError
+                if hasattr(api_err, "body") and api_err.body:
+                    raw_response = str(api_err.body)
+                elif hasattr(api_err, "response") and api_err.response:
+                    raw_response = str(api_err.response)
             case MultiplexerError() as mux_err:
                 reason = mux_err.message
             case _:
@@ -701,7 +745,7 @@ class MultiplexerBackend:
             status=status,
             reason=reason,
             headers={},
-            body_text=None,
+            body_text=raw_response,
             parsed_error=reason,
             model=model,
             payload_summary=payload_summary,

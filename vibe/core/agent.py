@@ -164,6 +164,19 @@ class Agent:
         timeout = self.config.api_timeout
         return BACKEND_FACTORY[provider.backend](provider=provider, timeout=timeout)
 
+    def get_loading_status(self) -> str | None:
+        """Get a loading status message for the current backend.
+
+        Returns:
+            A status message describing the model being used,
+            or None if no special status is needed.
+        """
+        from vibe.core.llm.backend.multiplexer import MultiplexerBackend
+
+        if isinstance(self.backend, MultiplexerBackend):
+            return self.backend.get_loading_status()
+        return None
+
     def _create_multiplexer_backend(self) -> BackendLike:
         """Create a MultiplexerBackend from configuration."""
         from vibe.core.config import ModelConfig, ModelPoolEntry, ProviderConfig

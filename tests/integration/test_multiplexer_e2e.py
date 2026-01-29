@@ -210,7 +210,7 @@ class TestLoadBalanceMode:
         mock_mux_instance = MagicMock()
         mock_mux_class.return_value = mock_mux_instance
 
-        with patch("vibe.core.llm.backend.multiplexer.Multiplexer", mock_mux_class):
+        with patch("multiplexer_llm.Multiplexer", mock_mux_class):
             with patch("vibe.core.llm.backend.multiplexer.AsyncOpenAI"):
                 backend = MultiplexerBackend(
                     model_configs=model_configs,
@@ -313,7 +313,7 @@ class TestMultiplexerStreaming:
         mock_mux = MagicMock()
         mock_mux_class = MagicMock(return_value=mock_mux)
 
-        with patch("vibe.core.llm.backend.multiplexer.Multiplexer", mock_mux_class):
+        with patch("multiplexer_llm.Multiplexer", mock_mux_class):
             with patch(
                 "vibe.core.llm.backend.multiplexer.AsyncOpenAI",
                 return_value=mock_client,
@@ -548,7 +548,7 @@ class TestResourceCleanup:
         mock_mux_instance.async_reset = AsyncMock()
         mock_mux_class.return_value = mock_mux_instance
 
-        with patch("vibe.core.llm.backend.multiplexer.Multiplexer", mock_mux_class):
+        with patch("multiplexer_llm.Multiplexer", mock_mux_class):
             backend = MultiplexerBackend(provider=primary_provider)
             await backend.__aenter__()
 
@@ -573,7 +573,7 @@ class TestResourceCleanup:
         mock_mux_instance.async_reset = AsyncMock()
         mock_mux_class.return_value = mock_mux_instance
 
-        with patch("vibe.core.llm.backend.multiplexer.Multiplexer", mock_mux_class):
+        with patch("multiplexer_llm.Multiplexer", mock_mux_class):
             async with MultiplexerBackend(provider=primary_provider) as backend:
                 assert backend._multiplexer is not None
 

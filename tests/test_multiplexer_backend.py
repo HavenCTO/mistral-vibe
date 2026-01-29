@@ -533,7 +533,7 @@ class TestMultiplexerBackendContextManager:
         mock_mux_instance = MagicMock()
         mock_mux_class.return_value = mock_mux_instance
 
-        with patch("vibe.core.llm.backend.multiplexer.Multiplexer", mock_mux_class):
+        with patch("multiplexer_llm.Multiplexer", mock_mux_class):
             backend = MultiplexerBackend(provider=provider_config)
             result = await backend.__aenter__()
 
@@ -560,14 +560,14 @@ class TestMultiplexerBackendContextManager:
         mock_mux_instance = MagicMock()
         mock_mux_class.return_value = mock_mux_instance
 
-        with patch("vibe.core.llm.backend.multiplexer.Multiplexer", mock_mux_class):
+        with patch("multiplexer_llm.Multiplexer", mock_mux_class):
             backend = MultiplexerBackend(model_configs=model_configs)
             await backend.__aenter__()
 
             mock_mux_instance.add_model.assert_called_once()
             call_kwargs = mock_mux_instance.add_model.call_args[1]
             assert call_kwargs["weight"] == pool_entry.weight
-            assert call_kwargs["model_name"] == model_config.name
+            assert call_kwargs["model_name"] == model_config.model_id
 
     @pytest.mark.asyncio
     async def test_aenter_adds_fallback_model(
@@ -596,7 +596,7 @@ class TestMultiplexerBackendContextManager:
         mock_mux_instance = MagicMock()
         mock_mux_class.return_value = mock_mux_instance
 
-        with patch("vibe.core.llm.backend.multiplexer.Multiplexer", mock_mux_class):
+        with patch("multiplexer_llm.Multiplexer", mock_mux_class):
             backend = MultiplexerBackend(model_configs=model_configs)
             await backend.__aenter__()
 
@@ -614,7 +614,7 @@ class TestMultiplexerBackendContextManager:
         mock_mux_instance.async_reset = AsyncMock()
         mock_mux_class.return_value = mock_mux_instance
 
-        with patch("vibe.core.llm.backend.multiplexer.Multiplexer", mock_mux_class):
+        with patch("multiplexer_llm.Multiplexer", mock_mux_class):
             backend = MultiplexerBackend(provider=provider_config)
             await backend.__aenter__()
             await backend.__aexit__(None, None, None)
@@ -759,7 +759,7 @@ class TestMultiplexerBackendStreaming:
         mock_mux = MagicMock()
         mock_mux_class = MagicMock(return_value=mock_mux)
 
-        with patch("vibe.core.llm.backend.multiplexer.Multiplexer", mock_mux_class):
+        with patch("multiplexer_llm.Multiplexer", mock_mux_class):
             with patch("vibe.core.llm.backend.multiplexer.AsyncOpenAI", return_value=mock_client):
                 backend = MultiplexerBackend(provider=provider_config)
                 await backend.__aenter__()
@@ -807,7 +807,7 @@ class TestMultiplexerBackendStreaming:
         mock_mux.chat.completions.create = AsyncMock(return_value=mock_completion)
         mock_mux_class = MagicMock(return_value=mock_mux)
 
-        with patch("vibe.core.llm.backend.multiplexer.Multiplexer", mock_mux_class):
+        with patch("multiplexer_llm.Multiplexer", mock_mux_class):
             with patch("vibe.core.llm.backend.multiplexer.AsyncOpenAI"):
                 backend = MultiplexerBackend(model_configs=model_configs)
                 await backend.__aenter__()
