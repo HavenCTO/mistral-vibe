@@ -262,6 +262,7 @@ class ModelConfig(BaseModel):
     name: str
     provider: str
     alias: str
+    model_id: str = ""
     temperature: float = 0.2
     input_price: float = 0.0  # Price per million input tokens
     output_price: float = 0.0  # Price per million output tokens
@@ -272,7 +273,16 @@ class ModelConfig(BaseModel):
         if isinstance(data, dict):
             if "alias" not in data or data["alias"] is None:
                 data["alias"] = data.get("name")
+            # Default model_id to name if not provided
+            if "model_id" not in data or data["model_id"] is None or data["model_id"] == "":
+                data["model_id"] = data.get("name")
         return data
+
+    @model_validator(mode="after")
+    def _default_model_id_to_name(self) -> ModelConfig:
+        if not self.model_id:
+            self.model_id = self.name
+        return self
 
 
 DEFAULT_PROVIDERS = [

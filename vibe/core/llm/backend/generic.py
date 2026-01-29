@@ -258,7 +258,7 @@ class GenericBackend:
         adapter = BACKEND_ADAPTERS[api_style]
 
         endpoint, headers, body = adapter.prepare_request(
-            model_name=model.name,
+            model_name=model.model_id,
             messages=messages,
             temperature=temperature,
             tools=tools,
@@ -284,7 +284,7 @@ class GenericBackend:
                 endpoint=url,
                 response=e.response,
                 headers=e.response.headers,
-                model=model.name,
+                model=model.model_id,
                 messages=messages,
                 temperature=temperature,
                 has_tools=bool(tools),
@@ -295,7 +295,7 @@ class GenericBackend:
                 provider=self._provider.name,
                 endpoint=url,
                 error=e,
-                model=model.name,
+                model=model.model_id,
                 messages=messages,
                 temperature=temperature,
                 has_tools=bool(tools),
@@ -323,7 +323,7 @@ class GenericBackend:
         adapter = BACKEND_ADAPTERS[api_style]
 
         endpoint, headers, body = adapter.prepare_request(
-            model_name=model.name,
+            model_name=model.model_id,
             messages=messages,
             temperature=temperature,
             tools=tools,
@@ -349,7 +349,7 @@ class GenericBackend:
                 endpoint=url,
                 response=e.response,
                 headers=e.response.headers,
-                model=model.name,
+                model=model.model_id,
                 messages=messages,
                 temperature=temperature,
                 has_tools=bool(tools),
@@ -360,7 +360,7 @@ class GenericBackend:
                 provider=self._provider.name,
                 endpoint=url,
                 error=e,
-                model=model.name,
+                model=model.model_id,
                 messages=messages,
                 temperature=temperature,
                 has_tools=bool(tools),

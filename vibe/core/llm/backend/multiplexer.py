@@ -332,6 +332,21 @@ class MultiplexerBackend:
             )
         return self._multiplexer
 
+    def get_first_model_config(self) -> ModelConfig:
+        """Get the first model config from the pool for use in chat methods.
+
+        Returns:
+            The first ModelConfig from the pool.
+
+        Raises:
+            RuntimeError: If no model configs are available.
+        """
+        if self._pool_model_configs:
+            return self._pool_model_configs[0][0]
+        if self._simple_model_configs:
+            return self._simple_model_configs[0][0]
+        raise RuntimeError("No model configs available in MultiplexerBackend")
+
     async def complete(
         self,
         *,
@@ -353,7 +368,7 @@ class MultiplexerBackend:
 
         kwargs: dict[str, Any] = {
             "messages": openai_messages,
-            "model": model.name,
+            "model": model.model_id,
             "temperature": temperature,
         }
 
@@ -376,7 +391,7 @@ class MultiplexerBackend:
         except Exception as e:
             raise self._map_exception(
                 e,
-                model=model.name,
+                model=model.model_id,
                 messages=messages,
                 temperature=temperature,
                 has_tools=bool(tools),
@@ -445,7 +460,7 @@ class MultiplexerBackend:
 
         kwargs: dict[str, Any] = {
             "messages": openai_messages,
-            "model": model.name,
+            "model": model.model_id,
             "temperature": temperature,
             "stream": True,
             "stream_options": {"include_usage": True},
@@ -472,7 +487,7 @@ class MultiplexerBackend:
         except Exception as e:
             raise self._map_exception(
                 e,
-                model=model.name,
+                model=model.model_id,
                 messages=messages,
                 temperature=temperature,
                 has_tools=bool(tools),
@@ -563,8 +578,28 @@ class MultiplexerBackend:
 
     def get_stats(self) -> MultiplexerStats:
         """Get current multiplexer statistics."""
+        # Determine mode from configuration
+        mode = "single"
+        if self._multiplexer_config is not None:
+            mode = self._multiplexer_config.mode.value
+
+        # If multiplexer not yet initialized, return config-based stats
         if self._multiplexer is None:
-            return MultiplexerStats(enabled=False)
+            # Determine pool size from stored model configs
+            pool_size = 0
+            if self._pool_model_configs:
+                pool_size = len(self._pool_model_configs)
+            elif self._simple_model_configs:
+                pool_size = len(self._simple_model_configs)
+
+            return MultiplexerStats(
+                enabled=self._multiplexer_config.enabled if self._multiplexer_config else False,
+                mode=mode,
+                models_in_pool=pool_size,
+                models_available=pool_size,
+                models_disabled=0,
+                per_model={},
+            )
 
         raw_stats = self._multiplexer.get_stats()
 
@@ -592,10 +627,6 @@ class MultiplexerBackend:
                 is_disabled=is_disabled,
                 disabled_until_timestamp=disabled_until if is_disabled else None,
             )
-
-        mode = "single"
-        if self._multiplexer_config is not None:
-            mode = self._multiplexer_config.mode.value
 
         return MultiplexerStats(
             enabled=True,

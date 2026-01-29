@@ -218,7 +218,7 @@ class MistralBackend:
     ) -> LLMChunk:
         try:
             response = await self._get_client().chat.complete_async(
-                model=model.name,
+                model=model.model_id,
                 messages=[self._mapper.prepare_message(msg) for msg in messages],
                 temperature=temperature,
                 tools=[self._mapper.prepare_tool(tool) for tool in tools]
@@ -260,7 +260,7 @@ class MistralBackend:
                 endpoint=self._server_url,
                 response=e.raw_response,
                 headers=e.raw_response.headers,
-                model=model.name,
+                model=model.model_id,
                 messages=messages,
                 temperature=temperature,
                 has_tools=bool(tools),
@@ -271,7 +271,7 @@ class MistralBackend:
                 provider=self._provider.name,
                 endpoint=self._server_url,
                 error=e,
-                model=model.name,
+                model=model.model_id,
                 messages=messages,
                 temperature=temperature,
                 has_tools=bool(tools),
@@ -291,7 +291,7 @@ class MistralBackend:
     ) -> AsyncGenerator[LLMChunk, None]:
         try:
             async for chunk in await self._get_client().chat.stream_async(
-                model=model.name,
+                model=model.model_id,
                 messages=[self._mapper.prepare_message(msg) for msg in messages],
                 temperature=temperature,
                 tools=[self._mapper.prepare_tool(tool) for tool in tools]
@@ -335,7 +335,7 @@ class MistralBackend:
                 endpoint=self._server_url,
                 response=e.raw_response,
                 headers=e.raw_response.headers,
-                model=model.name,
+                model=model.model_id,
                 messages=messages,
                 temperature=temperature,
                 has_tools=bool(tools),
@@ -346,7 +346,7 @@ class MistralBackend:
                 provider=self._provider.name,
                 endpoint=self._server_url,
                 error=e,
-                model=model.name,
+                model=model.model_id,
                 messages=messages,
                 temperature=temperature,
                 has_tools=bool(tools),

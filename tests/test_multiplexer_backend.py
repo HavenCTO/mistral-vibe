@@ -49,6 +49,7 @@ def model_config() -> ModelConfig:
         name="test-model",
         provider="test-provider",
         alias="test",
+        model_id="test-model-id",
     )
 
 
@@ -672,7 +673,7 @@ class TestMultiplexerBackendComplete:
 
         mock_mux.chat.completions.create.assert_called_once()
         call_kwargs = mock_mux.chat.completions.create.call_args[1]
-        assert call_kwargs["model"] == model_config.name
+        assert call_kwargs["model"] == model_config.model_id
         assert call_kwargs["temperature"] == 0.5
 
     @pytest.mark.asyncio

@@ -555,8 +555,18 @@ class Agent:
                 continue
 
     async def _chat(self, max_tokens: int | None = None) -> LLMChunk:
-        active_model = self.config.get_active_model()
-        provider = self.config.get_provider_for_model(active_model)
+        # Handle multiplexer case where active_model may not be in config
+        from vibe.core.llm.backend.multiplexer import MultiplexerBackend
+
+        if isinstance(self.backend, MultiplexerBackend):
+            active_model = self.backend.get_first_model_config()
+            # For multiplexer, use the provider from the first model in pool
+            provider = self.config.get_provider_for_model(active_model)
+            backend_provider_name = "multiplexer"
+        else:
+            active_model = self.config.get_active_model()
+            provider = self.config.get_provider_for_model(active_model)
+            backend_provider_name = provider.name
 
         available_tools = self.format_handler.get_available_tools(
             self.tool_manager, self.config
@@ -594,14 +604,23 @@ class Agent:
 
         except Exception as e:
             raise RuntimeError(
-                f"API error from {provider.name} (model: {active_model.name}): {e}"
+                f"API error from {backend_provider_name} (model: {active_model.name}): {e}"
             ) from e
 
     async def _chat_streaming(
         self, max_tokens: int | None = None
     ) -> AsyncGenerator[LLMChunk]:
-        active_model = self.config.get_active_model()
-        provider = self.config.get_provider_for_model(active_model)
+        # Handle multiplexer case where active_model may not be in config
+        from vibe.core.llm.backend.multiplexer import MultiplexerBackend
+
+        if isinstance(self.backend, MultiplexerBackend):
+            active_model = self.backend.get_first_model_config()
+            provider = self.config.get_provider_for_model(active_model)
+            backend_provider_name = "multiplexer"
+        else:
+            active_model = self.config.get_active_model()
+            provider = self.config.get_provider_for_model(active_model)
+            backend_provider_name = provider.name
 
         available_tools = self.format_handler.get_available_tools(
             self.tool_manager, self.config
@@ -645,7 +664,7 @@ class Agent:
 
         except Exception as e:
             raise RuntimeError(
-                f"API error from {provider.name} (model: {active_model.name}): {e}"
+                f"API error from {backend_provider_name} (model: {active_model.name}): {e}"
             ) from e
 
     def _update_stats(self, usage: LLMUsage, time_seconds: float) -> None:
@@ -833,7 +852,13 @@ class Agent:
             summary_message = LLMMessage(role=Role.user, content=summary_content)
             self.messages = [system_message, summary_message]
 
-            active_model = self.config.get_active_model()
+            # Handle multiplexer case where active_model may not be in config
+            from vibe.core.llm.backend.multiplexer import MultiplexerBackend
+
+            if isinstance(self.backend, MultiplexerBackend):
+                active_model = self.backend.get_first_model_config()
+            else:
+                active_model = self.config.get_active_model()
             provider = self.config.get_provider_for_model(active_model)
 
             async with self.backend as backend:
