@@ -49,8 +49,10 @@ from vibe.core.types import (
     LLMChunk,
     LLMMessage,
     LLMUsage,
+    MultiplexerStats,
     ReasoningEvent,
     Role,
+    SessionCompleteEvent,
     SyncApprovalCallback,
     ToolCallEvent,
     ToolResultEvent,
@@ -196,6 +198,24 @@ class Agent:
             timeout=self.config.api_timeout,
         )
 
+    def _create_session_complete_event(self) -> SessionCompleteEvent:
+        """Create a SessionCompleteEvent with current stats.
+        
+        Returns:
+            SessionCompleteEvent containing session stats and multiplexer
+            usage information if applicable.
+        """
+        from vibe.core.llm.backend.multiplexer import MultiplexerBackend
+
+        mux_stats: MultiplexerStats | None = None
+        if isinstance(self.backend, MultiplexerBackend):
+            mux_stats = self.backend.get_stats()
+
+        return SessionCompleteEvent(
+            stats=self.stats,
+            multiplexer_stats=mux_stats,
+        )
+
     def add_message(self, message: LLMMessage) -> None:
         self.messages.append(message)
 
@@ -321,6 +341,9 @@ class Agent:
 
                 if after_result.action == MiddlewareAction.STOP:
                     return
+
+            # Session completed successfully - yield final stats
+            yield self._create_session_complete_event()
 
         finally:
             self._flush_new_messages()

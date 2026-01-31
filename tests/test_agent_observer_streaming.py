@@ -27,6 +27,7 @@ from vibe.core.types import (
     LLMMessage,
     ReasoningEvent,
     Role,
+    SessionCompleteEvent,
     ToolCall,
     ToolCallEvent,
     ToolResultEvent,
@@ -159,7 +160,12 @@ async def test_act_streams_batched_chunks_in_order() -> None:
 
     events = [event async for event in agent.act("Stream, please.")]
 
-    assert len(events) == 2
+    assert len(events) == 3
+    assert [type(event) for event in events] == [
+        AssistantEvent,
+        AssistantEvent,
+        SessionCompleteEvent,
+    ]
     assert [event.content for event in events if isinstance(event, AssistantEvent)] == [
         "Hello from Vibe! More",
         " and end",
@@ -199,6 +205,7 @@ async def test_act_handles_streaming_with_tool_call_events_in_sequence() -> None
         ToolCallEvent,
         ToolResultEvent,
         AssistantEvent,
+        SessionCompleteEvent,
     ]
     assert isinstance(events[0], AssistantEvent)
     assert events[0].content == "Checking your todos."
@@ -240,6 +247,7 @@ async def test_act_handles_tool_call_chunk_with_content() -> None:
         AssistantEvent,
         ToolCallEvent,
         ToolResultEvent,
+        SessionCompleteEvent,
     ]
     assert isinstance(events[0], AssistantEvent)
     assert events[0].content == "Preparing todo request complete"
@@ -282,6 +290,7 @@ async def test_act_merges_streamed_tool_call_arguments() -> None:
         AssistantEvent,
         ToolCallEvent,
         ToolResultEvent,
+        SessionCompleteEvent,
     ]
     call_event = events[1]
     assert isinstance(call_event, ToolCallEvent)

@@ -317,6 +317,15 @@ class CompactEndEvent(BaseEvent):
     summary_length: int
 
 
+class SessionCompleteEvent(BaseEvent):
+    """Yielded when a session completes successfully.
+    
+    Contains final statistics including multiplexer usage per model.
+    """
+    stats: AgentStats
+    multiplexer_stats: MultiplexerStats | None = None
+
+
 class OutputFormat(StrEnum):
     TEXT = auto()
     JSON = auto()

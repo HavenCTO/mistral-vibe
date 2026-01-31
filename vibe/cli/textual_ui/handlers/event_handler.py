@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 from vibe.cli.textual_ui.widgets.compact import CompactMessage
 from vibe.cli.textual_ui.widgets.messages import AssistantMessage, ReasoningMessage
 from vibe.cli.textual_ui.widgets.no_markup_static import NoMarkupStatic
+from vibe.cli.textual_ui.widgets.session_complete import SessionCompleteMessage
 from vibe.cli.textual_ui.widgets.tools import ToolCallMessage, ToolResultMessage
 from vibe.core.types import (
     AssistantEvent,
@@ -13,6 +14,7 @@ from vibe.core.types import (
     CompactEndEvent,
     CompactStartEvent,
     ReasoningEvent,
+    SessionCompleteEvent,
     ToolCallEvent,
     ToolResultEvent,
 )
@@ -59,6 +61,8 @@ class EventHandler:
                 await self._handle_compact_start()
             case CompactEndEvent():
                 await self._handle_compact_end(event)
+            case SessionCompleteEvent():
+                await self._handle_session_complete(event)
             case _:
                 await self._handle_unknown_event(event)
         return None
@@ -139,6 +143,9 @@ class EventHandler:
                 old_tokens=event.old_context_tokens, new_tokens=event.new_context_tokens
             )
             self.current_compact = None
+
+    async def _handle_session_complete(self, event: SessionCompleteEvent) -> None:
+        await self.mount_callback(SessionCompleteMessage(event.multiplexer_stats))
 
     async def _handle_unknown_event(self, event: BaseEvent) -> None:
         await self.mount_callback(NoMarkupStatic(str(event), classes="unknown-event"))

@@ -21,6 +21,7 @@ from vibe.core.types import (
     FunctionCall,
     LLMMessage,
     Role,
+    SessionCompleteEvent,
     SyncApprovalCallback,
     ToolCall,
     ToolCallEvent,
@@ -86,6 +87,7 @@ async def test_single_tool_call_executes_under_auto_approve() -> None:
         ToolCallEvent,
         ToolResultEvent,
         AssistantEvent,
+        SessionCompleteEvent,
     ]
     assert isinstance(events[0], AssistantEvent)
     assert events[0].content == "Let me check your todos."

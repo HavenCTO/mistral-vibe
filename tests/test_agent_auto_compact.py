@@ -12,6 +12,7 @@ from vibe.core.types import (
     CompactStartEvent,
     LLMMessage,
     Role,
+    SessionCompleteEvent,
 )
 
 
@@ -34,10 +35,11 @@ async def test_auto_compact_triggers_and_batches_observer() -> None:
 
     events = [ev async for ev in agent.act("Hello")]
 
-    assert len(events) == 3
+    assert len(events) == 4
     assert isinstance(events[0], CompactStartEvent)
     assert isinstance(events[1], CompactEndEvent)
     assert isinstance(events[2], AssistantEvent)
+    assert isinstance(events[3], SessionCompleteEvent)
     start: CompactStartEvent = events[0]
     end: CompactEndEvent = events[1]
     final: AssistantEvent = events[2]

@@ -24,6 +24,7 @@ from vibe.core.types import (
     FunctionCall,
     LLMMessage,
     Role,
+    SessionCompleteEvent,
     ToolCall,
 )
 
@@ -510,10 +511,11 @@ class TestAutoCompactIntegration:
 
         events = [ev async for ev in agent.act("Hello")]
 
-        assert len(events) == 3
+        assert len(events) == 4
         assert isinstance(events[0], CompactStartEvent)
         assert isinstance(events[1], CompactEndEvent)
         assert isinstance(events[2], AssistantEvent)
+        assert isinstance(events[3], SessionCompleteEvent)
 
         start: CompactStartEvent = events[0]
         end: CompactEndEvent = events[1]
