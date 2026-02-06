@@ -775,32 +775,47 @@ weight = 1
         ]
 
         if stats.per_model:
-            lines.extend(["### Per-Model Statistics", ""])
+            lines.extend(["### Model Usage", ""])
 
             for name, model_stats in stats.per_model.items():
-                if model_stats.is_disabled:
-                    if model_stats.disabled_until_timestamp:
-                        dt = datetime.fromtimestamp(model_stats.disabled_until_timestamp)
-                        status = f"🔴 disabled until {dt.strftime('%H:%M:%S')}"
-                    else:
-                        status = "🔴 disabled"
-                else:
-                    status = "🟢 active"
+                # Only show models that have been used
+                if model_stats.total_requests == 0:
+                    continue
 
-                rate = (
-                    f"{model_stats.success_rate:.0%}"
-                    if model_stats.total_requests > 0
-                    else "N/A"
-                )
+                # Status indicator (similar to session_complete.py)
+                status_icon = "○" if model_stats.is_disabled else "●"
 
-                lines.append(f"**{name}**: {status}")
+                # Build status suffix for disabled models
+                status_suffix = ""
+                if model_stats.is_disabled and model_stats.disabled_until_timestamp:
+                    dt = datetime.fromtimestamp(model_stats.disabled_until_timestamp)
+                    status_suffix = f" (disabled until {dt.strftime('%H:%M:%S')})"
+
                 lines.append(
-                    f"  - Success: {model_stats.success_count} | "
-                    f"Rate limited: {model_stats.rate_limit_count} | "
-                    f"Failed: {model_stats.fail_count} | "
-                    f"Success rate: {rate}"
+                    f"{status_icon} **{name}**: {model_stats.success_count} ok, "
+                    f"{model_stats.rate_limit_count} rate-limited, "
+                    f"{model_stats.fail_count} failed "
+                    f"({model_stats.success_rate*100:.0f}% success){status_suffix}"
                 )
+
+            # Show unused models separately (if any)
+            unused_models = [
+                (name, ms)
+                for name, ms in stats.per_model.items()
+                if ms.total_requests == 0
+            ]
+            if unused_models:
                 lines.append("")
+                lines.append("**Unused Models:**")
+                for name, model_stats in unused_models:
+                    status_icon = "○" if model_stats.is_disabled else "●"
+                    status_suffix = ""
+                    if model_stats.is_disabled and model_stats.disabled_until_timestamp:
+                        dt = datetime.fromtimestamp(model_stats.disabled_until_timestamp)
+                        status_suffix = f" (disabled until {dt.strftime('%H:%M:%S')})"
+                    lines.append(f"{status_icon} **{name}**: no requests yet{status_suffix}")
+
+            lines.append("")
 
         return "\n".join(lines)
 
